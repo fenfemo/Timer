@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Таймер обратного отсчёта</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: radial-gradient(circle at 20% 30%, #0b0f1c, #03050b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+      padding: max(1rem, env(safe-area-inset-top))
+               max(1rem, env(safe-area-inset-right))
+               max(1rem, env(safe-area-inset-bottom))
+               max(1rem, env(safe-area-inset-left));
+    }
+
+    .card {
+      background: rgba(18, 25, 45, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(100, 180, 255, 0.25);
+      border-radius: clamp(2rem, 8vw, 3.5rem);
+      padding: clamp(1.6rem, 6vw, 3rem) clamp(1rem, 5vw, 2.8rem);
+      box-shadow: 0 30px 50px rgba(0, 0, 0, 0.8),
+                  0 0 0 1px rgba(80, 160, 255, 0.1) inset,
+                  0 0 40px rgba(0, 140, 255, 0.3);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .intro {
+      text-align: center;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .intro-text {
+      font-size: clamp(1.2rem, 5vw, 2rem);
+      font-weight: 500;
+      color: #ffffff;
+      line-height: 1.4;
+      letter-spacing: 0.5px;
+      margin-bottom: clamp(2rem, 7vw, 3rem);
+      text-shadow: 0 0 25px #2f7dff, 0 0 60px #0044cc;
+    }
+
+    .intro-text .name {
+      display: block;
+      font-size: clamp(1.9rem, 8vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: clamp(2px, 1vw, 4px);
+      margin-bottom: 0.8rem;
+      background: linear-gradient(135deg, #aac8ff, #6e9eff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(90, 160, 255, 0.7);
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: clamp(0.95rem, 4vw, 1.15rem);
+      font-weight: 500;
+      letter-spacing: 1px;
+      padding: 1rem 2.4rem;
+      border-radius: 3rem;
+      border: 1px solid rgba(120, 180, 255, 0.4);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.25s ease, background 0.25s ease;
+      background: rgba(40, 80, 160, 0.25);
+      color: #d6e6ff;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      min-height: 48px;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn.forgive {
+      border-color: rgba(100, 255, 180, 0.5);
+      background: rgba(20, 120, 80, 0.3);
+      color: #c9ffe6;
+      box-shadow: 0 0 25px rgba(0, 220, 130, 0.25);
+    }
+
+    .btn.reject {
+      border-color: rgba(255, 130, 130, 0.5);
+      background: rgba(140, 30, 30, 0.3);
+      color: #ffd6d6;
+      box-shadow: 0 0 25px rgba(255, 60, 60, 0.2);
+    }
+
+    @media (hover: hover) {
+      .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 80, 200, 0.5);
+      }
+      .btn.forgive:hover {
+        background: rgba(30, 180, 120, 0.45);
+        box-shadow: 0 12px 35px rgba(0, 220, 130, 0.55);
+        color: #ffffff;
+      }
+      .btn.reject:hover {
+        background: rgba(200, 50, 50, 0.4);
+        box-shadow: 0 12px 35px rgba(255, 60, 60, 0.5);
+        color: #ffffff;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .buttons {
+        flex-direction: column;
+      }
+      .btn {
+        width: 100%;
+      }
+    }
+
+    .timer-screen {
+      display: none;
+    }
+
+    .timer-screen.active {
+      display: block;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 400;
+      font-size: clamp(0.95rem, 4vw, 1.5rem);
+      letter-spacing: clamp(1.5px, 0.6vw, 3px);
+      text-transform: uppercase;
+      color: #9fc9ff;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 15px #2a6eff, 0 0 5px #1e4bb3;
+      word-break: break-word;
+      opacity: 0.9;
+    }
+
+    .target-date {
+      text-align: center;
+      font-size: clamp(0.85rem, 3.5vw, 1.2rem);
+      color: #c0d4ff;
+      margin-bottom: clamp(1.6rem, 6vw, 2.8rem);
+      font-weight: 300;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #aac8ff, #6e9eff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      border-bottom: 1px dashed rgba(120, 180, 255, 0.3);
+      padding-bottom: 1.2rem;
+    }
+
+    .countdown {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.4rem 0.8rem;
+    }
+
+    .time-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: clamp(58px, 18vw, 100px);
+      flex: 0 0 auto;
+    }
+
+    .number {
+      font-size: clamp(2rem, 11vw, 5.5rem);
+      font-weight: 700;
+      line-height: 1;
+      color: #ffffff;
+      text-shadow: 0 0 20px #2f7dff, 0 0 40px #0044cc, 0 0 80px #002a80;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: clamp(1px, 0.6vw, 5px);
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .label {
+      font-size: clamp(0.55rem, 2.4vw, 0.9rem);
+      text-transform: uppercase;
+      letter-spacing: clamp(0.8px, 0.4vw, 3px);
+      color: #7e9fd4;
+      margin-top: 0.6rem;
+      font-weight: 400;
+      text-shadow: 0 0 8px #0b1e3a;
+    }
+
+    .divider {
+      font-size: clamp(1.6rem, 7vw, 4.5rem);
+      font-weight: 300;
+      color: #3e6eb0;
+      text-shadow: 0 0 20px #0044cc;
+      margin-top: -0.5rem;
+      opacity: 0.8;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .surprise {
+      text-align: center;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    .surprise img {
+      max-width: 100%;
+      max-height: 60vh;
+      height: auto;
+      width: auto;
+      border-radius: clamp(1rem, 4vw, 2rem);
+      box-shadow: 0 20px 60px rgba(0, 100, 255, 0.4),
+                  0 0 80px rgba(0, 140, 255, 0.25);
+      border: 1px solid rgba(120, 180, 255, 0.3);
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    .surprise-caption {
+      margin-top: clamp(1.2rem, 5vw, 2rem);
+      font-size: clamp(1rem, 4.5vw, 1.6rem);
+      font-weight: 500;
+      line-height: 1.5;
+      letter-spacing: 0.3px;
+      color: #ffffff;
+      text-shadow: 0 0 25px #2f7dff, 0 0 50px #0044cc;
+      padding: 0 0.5rem;
+    }
+
+    .surprise-caption .highlight {
+      display: block;
+      margin-top: 0.7rem;
+      font-size: clamp(1.25rem, 6vw, 2rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #aac8ff, #6e9eff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(90, 160, 255, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="introScreen" class="intro">
+      <div class="intro-text">
+        <span class="name">Кирилл,</span>
+        прости, подарок задерживается
+      </div>
+      <div class="buttons">
+        <button id="forgiveBtn" class="btn forgive">Прощаю</button>
+        <button id="rejectBtn" class="btn reject">Не прощаю</button>
+      </div>
+    </div>
+
+    <div id="timerScreen" class="timer-screen">
+      <h1>До вашего подарка осталось:</h1>
+      <div class="target-date">Время ориентировочное, возможно раньше, возможно позже</div>
+      <div id="countdownContainer" class="countdown"></div>
+    </div>
+
+    <div id="surpriseScreen" class="surprise" style="display: none;">
+      <img src="surprise.jpg" alt="Сюрприз">
+      <div class="surprise-caption">
+        Ну вот и всё, дождался 😉
+        <span class="highlight">Спасибо, что был рядом</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const targetDate = new Date(2026, 8, 30, 12, 0, 0);
+
+      const introScreen = document.getElementById('introScreen');
+      const timerScreen = document.getElementById('timerScreen');
+      const surpriseScreen = document.getElementById('surpriseScreen');
+      const container = document.getElementById('countdownContainer');
+      const forgiveBtn = document.getElementById('forgiveBtn');
+      const rejectBtn = document.getElementById('rejectBtn');
+
+      forgiveBtn.addEventListener('click', () => {
+        introScreen.style.display = 'none';
+        timerScreen.classList.add('active');
+        if (new Date() >= targetDate) {
+          showSurprise();
+        } else {
+          startTimer();
+        }
+      });
+
+      rejectBtn.addEventListener('click', () => {});
+
+      function createTimeBlock(value, label, id) {
+        return `
+          <div class="time-block">
+            <div class="number" id="${id}">${value}</div>
+            <div class="label">${label}</div>
+          </div>
+        `;
+      }
+
+      function renderInitialLayout() {
+        container.innerHTML = `
+          ${createTimeBlock('00', 'дней', 'days')}
+          <div class="divider">:</div>
+          ${createTimeBlock('00', 'часов', 'hours')}
+          <div class="divider">:</div>
+          ${createTimeBlock('00', 'минут', 'minutes')}
+          <div class="divider">:</div>
+          ${createTimeBlock('00', 'секунд', 'seconds')}
+        `;
+      }
+
+      const pad = (num) => String(num).padStart(2, '0');
+      let intervalId = null;
+
+      function showSurprise() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        timerScreen.classList.remove('active');
+        timerScreen.style.display = 'none';
+        surpriseScreen.style.display = 'block';
+      }
+
+      function startTimer() {
+        renderInitialLayout();
+
+        const tick = () => {
+          const now = new Date();
+          const diff = targetDate - now;
+
+          if (diff <= 0) {
+            showSurprise();
+            return;
+          }
+
+          const totalSeconds = Math.floor(diff / 1000);
+          const days = Math.floor(totalSeconds / (3600 * 24));
+          const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+
+          const daysEl = document.getElementById('days');
+          const hoursEl = document.getElementById('hours');
+          const minutesEl = document.getElementById('minutes');
+          const secondsEl = document.getElementById('seconds');
+
+          if (daysEl && hoursEl && minutesEl && secondsEl) {
+            daysEl.textContent = pad(days);
+            hoursEl.textContent = pad(hours);
+            minutesEl.textContent = pad(minutes);
+            secondsEl.textContent = pad(seconds);
+          } else {
+            renderInitialLayout();
+          }
+        };
+
+        tick();
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(tick, 1000);
+      }
+    })();
+  </script>
+</body>
+</html>
